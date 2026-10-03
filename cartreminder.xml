@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension method="upgrade" type="plugin" group="hikashop">
+    <name>PLG_HIKASHOP_CARTREMINDER</name>
+    <version>1.1.0</version>
+    <description>PLG_HIKASHOP_CARTREMINDER_DESCRIPTION</description>
+    <author>Paweł Półtoraczyk</author>
+    <creationDate>03-10-2026</creationDate>
+    <copyright>(C) 2026 Paweł Półtoraczyk</copyright>
+    <license>GNU General Public License version 2 or later</license>
+    <namespace path="src">Pablop76\Plugin\Hikashop\Cartreminder</namespace>
+    <files>
+        <folder plugin="cartreminder">services</folder>
+        <folder>src</folder>
+        <folder>sql</folder>
+        <!-- sql/updates/mysql/*.sql: zmiany tabeli przy aktualizacji (patrz <update>) -->
+        <folder>mail</folder>
+        <folder>language</folder>
+    </files>
+    <install>
+        <sql>
+            <file driver="mysql" charset="utf8">sql/install.mysql.utf8.sql</file>
+        </sql>
+    </install>
+    <uninstall>
+        <sql>
+            <file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8.sql</file>
+        </sql>
+    </uninstall>
+    <update>
+        <schemas>
+            <schemapath type="mysql">sql/updates/mysql</schemapath>
+        </schemas>
+    </update>
+    <languages>
+        <language tag="en-GB">language/en-GB/plg_hikashop_cartreminder.ini</language>
+        <language tag="en-GB">language/en-GB/plg_hikashop_cartreminder.sys.ini</language>
+        <language tag="pl-PL">language/pl-PL/plg_hikashop_cartreminder.ini</language>
+        <language tag="pl-PL">language/pl-PL/plg_hikashop_cartreminder.sys.ini</language>
+    </languages>
+    <config>
+        <fields name="params">
+            <fieldset name="basic">
+                <field
+                    name="mode"
+                    type="list"
+                    label="PLG_HIKASHOP_CARTREMINDER_MODE_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_MODE_DESC"
+                    default="both"
+                >
+                    <option value="both">PLG_HIKASHOP_CARTREMINDER_MODE_BOTH</option>
+                    <option value="orders">PLG_HIKASHOP_CARTREMINDER_MODE_ORDERS</option>
+                    <option value="carts">PLG_HIKASHOP_CARTREMINDER_MODE_CARTS</option>
+                </field>
+                <field
+                    name="test_mode"
+                    type="radio"
+                    label="PLG_HIKASHOP_CARTREMINDER_TEST_MODE_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_TEST_MODE_DESC"
+                    default="1"
+                    class="btn-group"
+                >
+                    <option value="0">JNO</option>
+                    <option value="1">JYES</option>
+                </field>
+                <field
+                    name="test_email"
+                    type="email"
+                    label="PLG_HIKASHOP_CARTREMINDER_TEST_EMAIL_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_TEST_EMAIL_DESC"
+                    default=""
+                    validate="email"
+                    showon="test_mode:1"
+                />
+                <field
+                    name="limit"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_LIMIT_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_LIMIT_DESC"
+                    default="10"
+                    min="1"
+                    max="100"
+                    step="1"
+                />
+                <field
+                    name="max_age"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_MAX_AGE_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_MAX_AGE_DESC"
+                    default="7"
+                    min="1"
+                    max="30"
+                    step="1"
+                />
+                <field
+                    name="min_gap"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_MIN_GAP_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_MIN_GAP_DESC"
+                    default="7"
+                    min="1"
+                    max="90"
+                    step="1"
+                />
+                <field
+                    name="excluded_emails"
+                    type="textarea"
+                    label="PLG_HIKASHOP_CARTREMINDER_EXCLUDED_EMAILS_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_EXCLUDED_EMAILS_DESC"
+                    default=""
+                    rows="4"
+                />
+                <field
+                    name="retention"
+                    type="list"
+                    label="PLG_HIKASHOP_CARTREMINDER_RETENTION_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_RETENTION_DESC"
+                    default="180"
+                >
+                    <option value="30">PLG_HIKASHOP_CARTREMINDER_RETENTION_30</option>
+                    <option value="60">PLG_HIKASHOP_CARTREMINDER_RETENTION_60</option>
+                    <option value="90">PLG_HIKASHOP_CARTREMINDER_RETENTION_90</option>
+                    <option value="180">PLG_HIKASHOP_CARTREMINDER_RETENTION_180</option>
+                </field>
+            </fieldset>
+            <fieldset name="carts" label="PLG_HIKASHOP_CARTREMINDER_CARTS_FIELDSET">
+                <field
+                    name="cart_delay"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_CART_DELAY_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_CART_DELAY_DESC"
+                    default="4"
+                    min="1"
+                    max="168"
+                    step="1"
+                />
+                <field
+                    name="link_days"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_LINK_DAYS_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_LINK_DAYS_DESC"
+                    default="7"
+                    min="1"
+                    max="30"
+                    step="1"
+                />
+                <field
+                    name="consent"
+                    type="radio"
+                    label="PLG_HIKASHOP_CARTREMINDER_CONSENT_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_CONSENT_DESC"
+                    default="1"
+                    class="btn-group"
+                >
+                    <option value="0">PLG_HIKASHOP_CARTREMINDER_CONSENT_ALL</option>
+                    <option value="1">PLG_HIKASHOP_CARTREMINDER_CONSENT_ACYM</option>
+                </field>
+                <field
+                    name="acym_lists"
+                    type="text"
+                    label="PLG_HIKASHOP_CARTREMINDER_ACYM_LISTS_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_ACYM_LISTS_DESC"
+                    default=""
+                    showon="consent:1"
+                />
+                <field
+                    name="skip_categories"
+                    type="text"
+                    label="PLG_HIKASHOP_CARTREMINDER_SKIP_CATEGORIES_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_SKIP_CATEGORIES_DESC"
+                    default=""
+                />
+            </fieldset>
+            <fieldset name="orders" label="PLG_HIKASHOP_CARTREMINDER_ORDERS_FIELDSET">
+                <field
+                    name="order_delay"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_ORDER_DELAY_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_ORDER_DELAY_DESC"
+                    default="24"
+                    min="1"
+                    max="168"
+                    step="1"
+                />
+                <field
+                    name="order_slow_methods"
+                    type="text"
+                    label="PLG_HIKASHOP_CARTREMINDER_ORDER_SLOW_METHODS_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_ORDER_SLOW_METHODS_DESC"
+                    default="banktransfer"
+                />
+                <field
+                    name="order_slow_delay"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_ORDER_SLOW_DELAY_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_ORDER_SLOW_DELAY_DESC"
+                    default="72"
+                    min="1"
+                    max="168"
+                    step="1"
+                />
+                <field
+                    name="order_skip_methods"
+                    type="text"
+                    label="PLG_HIKASHOP_CARTREMINDER_ORDER_SKIP_METHODS_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_ORDER_SKIP_METHODS_DESC"
+                    default="collectondelivery"
+                />
+            </fieldset>
+        </fields>
+    </config>
+</extension>

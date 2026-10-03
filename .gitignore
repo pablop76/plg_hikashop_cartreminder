@@ -1,0 +1,20 @@
+# Paczki instalacyjne
+*.zip
+
+# Notatki wdrożeniowe (zawierają dane sklepu)
+/INSTRUKCJA.md
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
