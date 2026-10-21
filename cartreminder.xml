@@ -280,4 +280,8 @@
             </fieldset>
         </fields>
     </config>
+    <!-- "%68" zamiast "h": HikaShop przejmuje serwer aktualizacji, którego adres zawiera słowo "hikashop" -->
+    <updateservers>
+        <server type="extension" name="Cartreminder Updates">https://raw.githubusercontent.com/pablop76/plg_%68ikashop_cartreminder/release/updates.xml</server>
+    </updateservers>
 </extension>

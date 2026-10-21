@@ -55,6 +55,17 @@ Prośba o opinię nie idzie, gdy:
 Paczkę ZIP buduje się z zawartości repozytorium: `cartreminder.xml` oraz katalogi `services`,
 `src`, `sql`, `mail`, `language`. Ścieżki w archiwum muszą mieć ukośniki zwykłe (`/`).
 
+## Aktualizacje
+
+Od wersji 1.2.0 Joomla sama widzi nowe wersje: System → Aktualizacje → Rozszerzenia.
+Plik aktualizacji leży na gałęzi `release` (`updates.xml`), a paczka jest załącznikiem
+wydania na GitHubie.
+
+W adresie serwera aktualizacji w manifeście nazwa repozytorium jest zapisana jako
+`plg_%68ikashop_cartreminder`. HikaShop przy instalacji i aktualizacji szuka „swojego”
+serwera zapytaniem `location LIKE '%hikashop%'` i nadpisuje pierwszy znaleziony wiersz,
+także cudzy. Zakodowana litera „h” omija to zapytanie, a GitHub i Joomla pobierają ten sam plik.
+
 ## Cron
 
 Wtyczka działa na zdarzeniu `onHikashopCronTrigger`, więc potrzebuje prawdziwego crona
@@ -180,6 +191,7 @@ GROUP BY type;
 - Wybór odbiorców prośby: subskrybenci AcyMailing, pole zgody w zamówieniu albo wszyscy.
 - Opcja „Nic” w polu „Co przypominać” (same prośby o opinię).
 - Wspólna lista rezygnacji dla przypomnień o koszyku i próśb o opinię.
+- Serwer aktualizacji: Joomla pokazuje nowe wersje w System → Aktualizacje.
 
 ### 1.1.0
 
