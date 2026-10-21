@@ -23,6 +23,7 @@ class Cartreminder extends CMSPlugin
     private const TABLE = '#__hikashop_cartreminder';
     private const MAIL_CART = 'cart_reminder';
     private const MAIL_ORDER = 'order_payment_reminder';
+    private const MAIL_REVIEW = 'order_review_request';
 
     /**
      * Tyle razy próbujemy wysłać jedno przypomnienie, zanim wpis dostanie status "failed"
@@ -45,7 +46,7 @@ class Cartreminder extends CMSPlugin
     private $sentTo = [];
 
     /**
-     * Zgłasza oba maile do HikaShop → System → E-maile, żeby dało się je tam edytować
+     * Zgłasza maile do HikaShop → System → E-maile, żeby dało się je tam edytować
      * i wyłączać. Szablony leżą w katalogu wtyczki (mail/).
      */
     public function onMailListing(&$files)
@@ -53,7 +54,7 @@ class Cartreminder extends CMSPlugin
         $folder = JPATH_PLUGINS . DIRECTORY_SEPARATOR . 'hikashop' . DIRECTORY_SEPARATOR . 'cartreminder'
             . DIRECTORY_SEPARATOR . 'mail' . DIRECTORY_SEPARATOR;
 
-        foreach ([self::MAIL_CART, self::MAIL_ORDER] as $name) {
+        foreach ([self::MAIL_CART, self::MAIL_ORDER, self::MAIL_REVIEW] as $name) {
             $files[] = [
                 'folder' => $folder,
                 'name' => Text::_('PLG_HIKASHOP_CARTREMINDER_MAIL_' . strtoupper($name)),
@@ -67,7 +68,7 @@ class Cartreminder extends CMSPlugin
      * Wysyłka przypomnień przy każdym wywołaniu crona HikaShop
      *
      * Najpierw nieopłacone zamówienia (klient kliknął już "Zamawiam i płacę"),
-     * potem porzucone koszyki - w ramach wspólnego limitu wiadomości na przebieg.
+     * potem porzucone koszyki, na końcu prośby o opinię - w ramach wspólnego limitu wiadomości na przebieg.
      */
     public function onHikashopCronTrigger(&$messages)
     {
@@ -90,17 +91,22 @@ class Cartreminder extends CMSPlugin
         $limit = max(1, (int) $this->params->get('limit', 10));
         $orders = 0;
         $carts = 0;
+        $reviews = 0;
 
-        if ($mode !== 'carts') {
+        if ($mode === 'both' || $mode === 'orders') {
             $orders = $this->remindOrders($limit, $test, $testEmail);
         }
 
-        if ($mode !== 'orders' && $limit - $orders > 0) {
+        if (($mode === 'both' || $mode === 'carts') && $limit - $orders > 0) {
             $carts = $this->remindCarts($limit - $orders, $test, $testEmail);
         }
 
-        if ($orders || $carts) {
-            $messages[] = Text::sprintf('PLG_HIKASHOP_CARTREMINDER_CRON_REPORT', $orders, $carts);
+        if ((int) $this->params->get('review', 0) && $limit - $orders - $carts > 0) {
+            $reviews = $this->requestReviews($limit - $orders - $carts, $test, $testEmail);
+        }
+
+        if ($orders || $carts || $reviews) {
+            $messages[] = Text::sprintf('PLG_HIKASHOP_CARTREMINDER_CRON_REPORT', $orders, $carts, $reviews);
         }
 
         return true;
@@ -281,7 +287,7 @@ class Cartreminder extends CMSPlugin
                 || $this->recentlyReminded($email, $test)
                 // Godzina zapasu: zamówienie złożone tuż przed ostatnią zmianą koszyka też się liczy
                 || $this->hasOrderSince($email, (int) $row->cart_modified - 3600)
-                || ($consent && !$this->hasConsent($email))) {
+                || ($consent && !$this->hasConsent($email, (string) $this->params->get('acym_lists', '')))) {
                 continue;
             }
 
@@ -295,7 +301,7 @@ class Cartreminder extends CMSPlugin
             // Linki z maila testowego dostają znacznik t=1 i osobny podpis: po kliknięciu niczego nie zmieniają
             $mark = $test ? '&t=1' : '';
             $data->url = $this->actionUrl('a=cart&id=' . (int) $row->cart_id . $mark . '&k=' . $this->sign('cart|' . (int) $row->cart_id . '|' . $email . $mark));
-            $data->stop_url = $this->actionUrl('a=stop&e=' . rtrim(strtr(base64_encode($email), '+/', '-_'), '=') . $mark . '&k=' . $this->sign('stop|' . $email . $mark));
+            $data->stop_url = $this->stopUrl($email, $mark);
 
             $shopName = (string) hikashop_config()->get('from_name');
 
@@ -318,6 +324,171 @@ class Cartreminder extends CMSPlugin
         }
 
         return $sent;
+    }
+
+    /**
+     * Prośby o opinię kilka dni po wysłaniu zamówienia
+     *
+     * Moment wysyłki to ostatnia zmiana na jeden ze statusów z konfiguracji (historia zamówienia),
+     * a zamówienie musi mieć taki status nadal. Okno wysyłki chroni klientów sprzed miesięcy
+     * przed mailem zaraz po włączeniu funkcji.
+     */
+    private function requestReviews(int $limit, int $test, string $testEmail): int
+    {
+        if (!(int) hikashop_config()->get(self::MAIL_REVIEW . '.published', 1)) {
+            return 0;
+        }
+
+        $statuses = $this->csv((string) $this->params->get('review_statuses', 'shipped'));
+
+        if (!$statuses) {
+            return 0;
+        }
+
+        $db = $this->db();
+        $now = time();
+        $delay = max(1, (int) $this->params->get('review_delay', 7)) * 86400;
+        $window = max(1, (int) $this->params->get('review_window', 7)) * 86400;
+        $statuses = implode(',', array_map([$db, 'quote'], $statuses));
+
+        $shipped = $db->getQuery(true)
+            ->select('h.history_order_id, MAX(h.history_created) AS shipped')
+            ->from($db->quoteName('#__hikashop_history', 'h'))
+            ->where('h.history_new_status IN (' . $statuses . ')')
+            ->where('h.history_created > ' . ($now - $delay - $window))
+            ->group('h.history_order_id');
+
+        $query = $db->getQuery(true)
+            ->select($db->quoteName(['o.order_id', 'o.order_number', 'o.order_token', 'u.user_email']))
+            ->from($db->quoteName('#__hikashop_order', 'o'))
+            ->join('INNER', $db->quoteName('#__hikashop_user', 'u') . ' ON u.user_id = o.order_user_id')
+            ->join('INNER', '(' . $shipped . ') AS s ON s.history_order_id = o.order_id')
+            ->where('o.order_type = ' . $db->quote('sale'))
+            ->where('o.order_status IN (' . $statuses . ')')
+            ->where('o.order_token <> ' . $db->quote(''))
+            ->where('s.shipped < ' . ($now - $delay))
+            ->where($this->openSql('review', 'o.order_id', $test, $now))
+            ->order('s.shipped ASC');
+
+        $rows = $db->setQuery($query, 0, $limit * 5)->loadObjectList();
+        $shopName = (string) hikashop_config()->get('from_name');
+        $sent = 0;
+        $tried = 0;
+
+        foreach ($rows as $row) {
+            if ($tried >= $limit) {
+                break;
+            }
+
+            $email = strtolower(trim((string) $row->user_email));
+
+            if (!MailHelper::isEmailAddress($email) || isset($this->sentTo[$email])
+                || $this->isExcluded($email)
+                || $this->isOptedOut($email)
+                // Kilka zamówień w krótkim czasie = jedna prośba o opinię
+                || $this->recentlyReminded($email, $test, ['review'])
+                || !$this->mayAskForReview($email, (int) $row->order_id)) {
+                continue;
+            }
+
+            $data = new \stdClass();
+            $data->products = $this->loadReviewProducts($row, $email, $test);
+
+            if (!$data->products) {
+                continue;
+            }
+
+            $data->order_number = $row->order_number;
+            $data->stop_url = $this->stopUrl($email, $test ? '&t=1' : '');
+
+            $id = $this->claim('review', (int) $row->order_id, $email, $test);
+
+            if (!$id) {
+                continue;
+            }
+
+            $tried++;
+            $error = $this->send(self::MAIL_REVIEW, $data, 'PLG_HIKASHOP_CARTREMINDER_REVIEW_SUBJECT', (string) $row->order_number, $email, $test, $testEmail);
+            $this->finish($id, $error);
+
+            if ($error !== '') {
+                continue;
+            }
+
+            $this->sentTo[$email] = true;
+            $sent++;
+        }
+
+        return $sent;
+    }
+
+    /**
+     * Produkty zamówienia do prośby o opinię: nazwa, miniatura, link do formularza oceny
+     *
+     * Ocena należy do produktu głównego, więc warianty łączymy z rodzicem i każdy produkt jest raz.
+     * Pomijamy produkty niewidoczne w sklepie i te, które ten adres już ocenił (np. z maila o wysyłce).
+     * Link niesie numer i token zamówienia: HikaShop uznaje wtedy klienta za kupującego bez logowania.
+     */
+    private function loadReviewProducts(\stdClass $order, string $email, int $test): array
+    {
+        $db = $this->db();
+        $query = $db->getQuery(true)
+            ->select($db->quoteName(['op.product_id', 'p.product_parent_id']))
+            ->from($db->quoteName('#__hikashop_order_product', 'op'))
+            ->join('INNER', $db->quoteName('#__hikashop_product', 'p') . ' ON p.product_id = op.product_id')
+            ->where('op.order_id = ' . (int) $order->order_id)
+            ->where('op.order_product_quantity > 0')
+            // Opcja dodana do pozycji nie jest osobnym zakupem (kolumna dopuszcza NULL)
+            ->where('COALESCE(op.order_product_option_parent_id, 0) = 0')
+            ->order('op.order_product_id ASC');
+        $ids = [];
+
+        foreach ($db->setQuery($query)->loadObjectList() as $row) {
+            $id = (int) $row->product_parent_id ?: (int) $row->product_id;
+            $ids[$id] = $id;
+        }
+
+        if (!$ids) {
+            return [];
+        }
+
+        $query = $db->getQuery(true)
+            ->select('DISTINCT ' . $db->quoteName('vote_ref_id'))
+            ->from($db->quoteName('#__hikashop_vote'))
+            ->where($db->quoteName('vote_type') . ' = ' . $db->quote('product'))
+            ->where($db->quoteName('vote_email') . ' = ' . $db->quote($email))
+            ->where($db->quoteName('vote_ref_id') . ' IN (' . implode(',', $ids) . ')');
+        $ids = array_diff($ids, array_map('intval', $db->setQuery($query)->loadColumn()));
+
+        if (!$ids) {
+            return [];
+        }
+
+        // Mail testowy czyta administrator: bez tokenu link nie pozwoli ocenić w imieniu klienta
+        $params = $test ? '' : 'order_id=' . (int) $order->order_id . '&order_token=' . urlencode((string) $order->order_token) . '&';
+        $params .= 'utm_source=cartreminder&utm_medium=email&utm_campaign=prosba-o-opinie#hikashop_comment_form';
+
+        $productClass = hikashop_get('class.product');
+        $images = $this->imagesFor($ids);
+        $products = [];
+
+        foreach ($ids as $id) {
+            $product = $productClass->get($id);
+
+            if (!$product || (int) $product->product_published !== 1) {
+                continue;
+            }
+
+            $url = hikashop_contentLink('product&task=show&cid=' . $id . '&name=' . $product->product_alias, $product, false, false, false, true);
+
+            $products[] = (object) [
+                'name' => (string) hikashop_translate($product->product_name),
+                'image' => $this->thumbnail($images[$id] ?? ''),
+                'url' => $url . (strpos($url, '?') === false ? '?' : '&') . $params,
+            ];
+        }
+
+        return $products;
     }
 
     /**
@@ -716,7 +887,7 @@ class Cartreminder extends CMSPlugin
     }
 
     /**
-     * Czy adres zrezygnował z przypomnień o koszyku
+     * Czy adres zrezygnował z przypomnień o koszyku i próśb o opinię
      */
     private function isOptedOut(string $email): bool
     {
@@ -731,17 +902,17 @@ class Cartreminder extends CMSPlugin
     }
 
     /**
-     * Czy na ten adres poszło już jakiekolwiek przypomnienie w ostatnich N dniach
+     * Czy na ten adres poszło już przypomnienie podanego rodzaju w ostatnich N dniach
      * (jedna osoba nie dostaje serii maili za kilka koszyków albo koszyk i zamówienie)
      */
-    private function recentlyReminded(string $email, int $test): bool
+    private function recentlyReminded(string $email, int $test, array $types = ['cart', 'order']): bool
     {
         $db = $this->db();
         $gap = max(1, (int) $this->params->get('min_gap', 7)) * 86400;
         $query = $db->getQuery(true)
             ->select('COUNT(*)')
             ->from($db->quoteName(self::TABLE))
-            ->where($db->quoteName('type') . ' IN (' . $db->quote('cart') . ',' . $db->quote('order') . ')')
+            ->where($db->quoteName('type') . ' IN (' . implode(',', array_map([$db, 'quote'], $types)) . ')')
             ->where($db->quoteName('email') . ' = ' . $db->quote($email))
             ->where($db->quoteName('test') . ' = ' . $test)
             ->where($db->quoteName('status') . ' = ' . $db->quote('sent'))
@@ -773,8 +944,9 @@ class Cartreminder extends CMSPlugin
      * Czy adres jest aktywnym, potwierdzonym subskrybentem AcyMailing (zgoda na wiadomości handlowe)
      *
      * Bez AcyMailinga nikt nie ma zgody, więc przy włączonym wymogu nic nie wychodzi.
+     * $lists: identyfikatory list po przecinku, puste = dowolna lista.
      */
-    private function hasConsent(string $email): bool
+    private function hasConsent(string $email, string $lists): bool
     {
         static $hasTables = null;
 
@@ -797,13 +969,56 @@ class Cartreminder extends CMSPlugin
             ->where('au.confirmed = 1')
             ->where('ul.status = 1');
 
-        $lists = array_filter(array_map('intval', $this->csv((string) $this->params->get('acym_lists', ''))));
+        $lists = array_filter(array_map('intval', $this->csv($lists)));
 
         if ($lists) {
             $query->where('ul.list_id IN (' . implode(',', $lists) . ')');
         }
 
         return (int) $db->setQuery($query)->loadResult() > 0;
+    }
+
+    /**
+     * Czy do klienta tego zamówienia można napisać z prośbą o opinię (pole „Kto dostaje prośbę o opinię”)
+     */
+    private function mayAskForReview(string $email, int $orderId): bool
+    {
+        switch ((string) $this->params->get('review_consent', 'acym')) {
+            case 'all':
+                return true;
+            case 'field':
+                return $this->orderFieldChecked($orderId, trim((string) $this->params->get('review_field', '')));
+            default:
+                return $this->hasConsent($email, (string) $this->params->get('review_acym_lists', ''));
+        }
+    }
+
+    /**
+     * Czy pole własne zamówienia (kolumna #__hikashop_order) ma zaznaczoną zgodę: wartość inna niż pusta i 0
+     *
+     * Pole, którego nie ma w tabeli, oznacza brak zgody, więc przy literówce w nazwie nic nie wychodzi.
+     */
+    private function orderFieldChecked(int $orderId, string $column): bool
+    {
+        static $columns = null;
+
+        $db = $this->db();
+
+        if ($columns === null) {
+            $columns = array_keys($db->getTableColumns('#__hikashop_order'));
+        }
+
+        if (!in_array($column, $columns, true)) {
+            return false;
+        }
+
+        $query = $db->getQuery(true)
+            ->select($db->quoteName($column))
+            ->from($db->quoteName('#__hikashop_order'))
+            ->where($db->quoteName('order_id') . ' = ' . $orderId);
+        $value = trim((string) $db->setQuery($query)->loadResult());
+
+        return $value !== '' && $value !== '0';
     }
 
     /**
@@ -1008,7 +1223,7 @@ class Cartreminder extends CMSPlugin
 
         $query = $db->getQuery(true)
             ->delete($db->quoteName(self::TABLE))
-            ->where($db->quoteName('type') . ' IN (' . $db->quote('cart') . ',' . $db->quote('order') . ')')
+            ->where($db->quoteName('type') . ' IN (' . $db->quote('cart') . ',' . $db->quote('order') . ',' . $db->quote('review') . ')')
             ->where($db->quoteName('sent') . ' < ' . (time() - $days * 86400));
         $db->setQuery($query)->execute();
     }
@@ -1019,6 +1234,14 @@ class Cartreminder extends CMSPlugin
     private function actionUrl(string $query): string
     {
         return Uri::root() . 'index.php?option=com_ajax&group=hikashop&plugin=cartreminder&format=raw&' . $query;
+    }
+
+    /**
+     * Link "Nie chcę dostawać takich wiadomości" (wspólny dla maila o koszyku i prośby o opinię)
+     */
+    private function stopUrl(string $email, string $mark): string
+    {
+        return $this->actionUrl('a=stop&e=' . rtrim(strtr(base64_encode($email), '+/', '-_'), '=') . $mark . '&k=' . $this->sign('stop|' . $email . $mark));
     }
 
     /**

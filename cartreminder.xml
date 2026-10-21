@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension method="upgrade" type="plugin" group="hikashop">
     <name>PLG_HIKASHOP_CARTREMINDER</name>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <description>PLG_HIKASHOP_CARTREMINDER_DESCRIPTION</description>
     <author>Paweł Półtoraczyk</author>
-    <creationDate>03-10-2026</creationDate>
+    <creationDate>21-10-2026</creationDate>
     <copyright>(C) 2026 Paweł Półtoraczyk</copyright>
     <license>GNU General Public License version 2 or later</license>
     <namespace path="src">Pablop76\Plugin\Hikashop\Cartreminder</namespace>
@@ -50,6 +50,7 @@
                     <option value="both">PLG_HIKASHOP_CARTREMINDER_MODE_BOTH</option>
                     <option value="orders">PLG_HIKASHOP_CARTREMINDER_MODE_ORDERS</option>
                     <option value="carts">PLG_HIKASHOP_CARTREMINDER_MODE_CARTS</option>
+                    <option value="none">PLG_HIKASHOP_CARTREMINDER_MODE_NONE</option>
                 </field>
                 <field
                     name="test_mode"
@@ -204,6 +205,77 @@
                     label="PLG_HIKASHOP_CARTREMINDER_ORDER_SKIP_METHODS_LABEL"
                     description="PLG_HIKASHOP_CARTREMINDER_ORDER_SKIP_METHODS_DESC"
                     default="collectondelivery"
+                />
+            </fieldset>
+            <fieldset name="reviews" label="PLG_HIKASHOP_CARTREMINDER_REVIEWS_FIELDSET">
+                <field
+                    name="review"
+                    type="radio"
+                    label="PLG_HIKASHOP_CARTREMINDER_REVIEW_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_REVIEW_DESC"
+                    default="0"
+                    class="btn-group"
+                >
+                    <option value="0">JNO</option>
+                    <option value="1">JYES</option>
+                </field>
+                <field
+                    name="review_statuses"
+                    type="text"
+                    label="PLG_HIKASHOP_CARTREMINDER_REVIEW_STATUSES_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_REVIEW_STATUSES_DESC"
+                    default="shipped"
+                    showon="review:1"
+                />
+                <field
+                    name="review_delay"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_REVIEW_DELAY_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_REVIEW_DELAY_DESC"
+                    default="7"
+                    min="1"
+                    max="60"
+                    step="1"
+                    showon="review:1"
+                />
+                <field
+                    name="review_window"
+                    type="number"
+                    label="PLG_HIKASHOP_CARTREMINDER_REVIEW_WINDOW_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_REVIEW_WINDOW_DESC"
+                    default="7"
+                    min="1"
+                    max="30"
+                    step="1"
+                    showon="review:1"
+                />
+                <field
+                    name="review_consent"
+                    type="list"
+                    label="PLG_HIKASHOP_CARTREMINDER_REVIEW_CONSENT_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_REVIEW_CONSENT_DESC"
+                    default="acym"
+                    showon="review:1"
+                >
+                    <option value="acym">PLG_HIKASHOP_CARTREMINDER_REVIEW_CONSENT_ACYM</option>
+                    <option value="field">PLG_HIKASHOP_CARTREMINDER_REVIEW_CONSENT_FIELD</option>
+                    <option value="all">PLG_HIKASHOP_CARTREMINDER_REVIEW_CONSENT_ALL</option>
+                </field>
+                <field
+                    name="review_acym_lists"
+                    type="text"
+                    label="PLG_HIKASHOP_CARTREMINDER_ACYM_LISTS_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_ACYM_LISTS_DESC"
+                    default=""
+                    showon="review:1[AND]review_consent:acym"
+                />
+                <field
+                    name="review_field"
+                    type="text"
+                    label="PLG_HIKASHOP_CARTREMINDER_REVIEW_FIELD_LABEL"
+                    description="PLG_HIKASHOP_CARTREMINDER_REVIEW_FIELD_DESC"
+                    default=""
+                    showon="review:1[AND]review_consent:field"
                 />
             </fieldset>
         </fields>
