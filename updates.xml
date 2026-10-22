@@ -7,14 +7,14 @@
         <type>plugin</type>
         <client>site</client>
         <folder>hikashop</folder>
-        <version>1.2.0</version>
+        <version>1.2.1</version>
         <infourl title="HikaShop - Przypomnienia i prośba o opinię">https://github.com/pablop76/plg_hikashop_cartreminder</infourl>
         <targetplatform name="joomla" version="6\.[0-9]+"/>
         <php_minimum>8.3.0</php_minimum>
         <downloads>
-            <downloadurl type="full" format="zip">https://github.com/pablop76/plg_hikashop_cartreminder/releases/download/v1.2.0/plg_hikashop_cartreminder-1.2.0.zip</downloadurl>
+            <downloadurl type="full" format="zip">https://github.com/pablop76/plg_hikashop_cartreminder/releases/download/v1.2.1/plg_hikashop_cartreminder-1.2.1.zip</downloadurl>
         </downloads>
-        <sha256>972395e8a721a10204fc999d8e8b49116194b3802e3800a60b093de525d06a12</sha256>
+        <sha256>f71e30fa5f20bc147f09d666733746cfc26f414109aecd5a2ef503d69d2bf8d5</sha256>
         <tags>
             <tag>stable</tag>
         </tags>
