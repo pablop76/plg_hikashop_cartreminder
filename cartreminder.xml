@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension method="upgrade" type="plugin" group="hikashop">
     <name>PLG_HIKASHOP_CARTREMINDER</name>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
     <description>PLG_HIKASHOP_CARTREMINDER_DESCRIPTION</description>
     <author>Paweł Półtoraczyk</author>
-    <creationDate>21-10-2026</creationDate>
+    <creationDate>22-10-2026</creationDate>
     <copyright>(C) 2026 Paweł Półtoraczyk</copyright>
     <license>GNU General Public License version 2 or later</license>
     <namespace path="src">Pablop76\Plugin\Hikashop\Cartreminder</namespace>
@@ -171,7 +171,7 @@
                     default=""
                 />
             </fieldset>
-            <fieldset name="orders" label="PLG_HIKASHOP_CARTREMINDER_ORDERS_FIELDSET">
+            <fieldset name="orders" label="PLG_HIKASHOP_CARTREMINDER_ORDERS_FIELDSET" addfieldprefix="Pablop76\Plugin\Hikashop\Cartreminder\Field">
                 <field
                     name="order_delay"
                     type="number"
@@ -184,10 +184,13 @@
                 />
                 <field
                     name="order_slow_methods"
-                    type="text"
+                    type="paymentmethods"
                     label="PLG_HIKASHOP_CARTREMINDER_ORDER_SLOW_METHODS_LABEL"
                     description="PLG_HIKASHOP_CARTREMINDER_ORDER_SLOW_METHODS_DESC"
                     default="banktransfer"
+                    multiple="true"
+                    layout="joomla.form.field.list-fancy-select"
+                    hint="PLG_HIKASHOP_CARTREMINDER_PAYMENT_HINT"
                 />
                 <field
                     name="order_slow_delay"
@@ -201,10 +204,13 @@
                 />
                 <field
                     name="order_skip_methods"
-                    type="text"
+                    type="paymentmethods"
                     label="PLG_HIKASHOP_CARTREMINDER_ORDER_SKIP_METHODS_LABEL"
                     description="PLG_HIKASHOP_CARTREMINDER_ORDER_SKIP_METHODS_DESC"
                     default="collectondelivery"
+                    multiple="true"
+                    layout="joomla.form.field.list-fancy-select"
+                    hint="PLG_HIKASHOP_CARTREMINDER_PAYMENT_HINT"
                 />
             </fieldset>
             <fieldset name="reviews" label="PLG_HIKASHOP_CARTREMINDER_REVIEWS_FIELDSET">

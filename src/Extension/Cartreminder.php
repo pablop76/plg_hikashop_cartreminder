@@ -159,8 +159,9 @@ class Cartreminder extends CMSPlugin
         $now = time();
         $delay = max(1, (int) $this->params->get('order_delay', 24)) * 3600;
         $slowDelay = max(1, (int) $this->params->get('order_slow_delay', 72)) * 3600;
-        $slowMethods = $this->csv((string) $this->params->get('order_slow_methods', 'banktransfer'));
-        $skipMethods = $this->csv((string) $this->params->get('order_skip_methods', 'collectondelivery'));
+        // Od 1.2.1 lista metod (tablica); wcześniej zapisane jako tekst po przecinku
+        $slowMethods = $this->csv($this->params->get('order_slow_methods', 'banktransfer'));
+        $skipMethods = $this->csv($this->params->get('order_skip_methods', 'collectondelivery'));
         $maxAge = max(1, (int) $this->params->get('max_age', 7)) * 86400;
 
         $query = $db->getQuery(true)
@@ -1255,9 +1256,14 @@ class Cartreminder extends CMSPlugin
     /**
      * Lista z pola tekstowego "a, b, c"
      */
-    private function csv(string $value): array
+    /**
+     * Wartości po przecinku albo tablica z listy wielokrotnego wyboru (puste pozycje pomijamy)
+     */
+    private function csv($value): array
     {
-        return array_values(array_filter(array_map('trim', explode(',', $value)), 'strlen'));
+        $items = \is_array($value) ? $value : explode(',', (string) $value);
+
+        return array_values(array_filter(array_map('trim', array_map('strval', $items)), 'strlen'));
     }
 
     private function db()

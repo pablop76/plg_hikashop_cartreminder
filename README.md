@@ -6,7 +6,7 @@ zamówienia może też poprosić o opinię o kupionych produktach.
 
 - **Typ:** plugin Joomla, grupa `hikashop`, element `cartreminder`
 - **Wymagania:** Joomla 6 (a więc PHP 8.3+ i MySQL lub MariaDB), HikaShop 6; testowana na HikaShop 6.6 Business
-- **Wersja:** 1.2.0
+- **Wersja:** 1.2.1
 
 ## Co robi
 
@@ -98,8 +98,8 @@ włączaj w panelu, nie zapytaniem SQL, bo inaczej cron jej nie zobaczy do wyga�
 | Listy AcyMailing | dowolna | identyfikatory list po przecinku |
 | Pomiń koszyki z kategorii | puste | identyfikatory kategorii HikaShop |
 | Opóźnienie zamówienia | 24 h | dla płatności online |
-| Metody z dłuższym opóźnieniem | `banktransfer` | 72 h |
-| Metody bez przypomnień | `collectondelivery` | |
+| Metody z dłuższym opóźnieniem | przelew bankowy (`banktransfer`) | 72 h; lista metod płatności HikaShop |
+| Metody bez przypomnień | płatność przy odbiorze (`collectondelivery`) | lista metod płatności HikaShop |
 | Wysyłaj prośbę o opinię | nie | osobny przełącznik, niezależny od „Co przypominać” |
 | Statusy wysłanego zamówienia | `shipped` | kody statusów HikaShop po przecinku |
 | Opóźnienie prośby o opinię | 7 dni | od ostatniej zmiany na status wysłany |
@@ -184,6 +184,13 @@ GROUP BY type;
 ```
 
 ## Changelog
+
+### 1.2.1
+
+- „Metody z dłuższym opóźnieniem” i „Metody bez przypomnień” to lista metod płatności
+  ze sklepu do zaznaczenia, zamiast nazw wtyczek wpisywanych ręcznie. Przy każdej metodzie
+  widać w nawiasie nazwę wtyczki, a przy metodzie wyłączonej w sklepie dopisek „nieopublikowana”.
+- Ustawienia zapisane w starszej wersji (tekst po przecinku) działają bez zmian.
 
 ### 1.2.0
 
